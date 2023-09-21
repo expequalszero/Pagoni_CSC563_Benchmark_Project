@@ -31,71 +31,54 @@ def getDeviation(data):          #ran into issue with statistics given off the w
 
 
 
-def getOperationCount(operation,threadCount): #function for getting the num of operations completed per second, some arguments are needed for return to track 
-    
-    runOps = [] 
+def getCounts(testType, operation,threadCount): #function for getting the num of operations completed per second, some arguments are needed for return to track 
+    setOpsCount =100_000
+    opsCount = [] 
+    durationCount = []
+    deviation,average = 0,0
     for _ in range(3):
+        if(testType == "setNumTime"):
+            numOps = 0 
+            startTime = round(time.perf_counter(),6) #getting the start time using performance counter for ms 
+        
+            while round(time.perf_counter(),6)-startTime <1:   #running a loop for 1 second and getting the number of operatiosn completed.
+                eval(operation)
+                numOps+=1
+        
+            opsCount.append(numOps) #adding the number of operations to list 
+        
+        else:
+            startTime = round(time.perf_counter(),6)
+            for _ in range(setOpsCount):
+                eval(operation)
+            endTime =  round(time.perf_counter(),6)
+            duration = endTime-startTime
+            opsPerSec = setOpsCount/duration
+            durationCount.append(opsPerSec)
+            
+    if(testType == "setNumTime"):
+       deviation,average = getDeviation(opsCount) 
+    else:   
+       deviation,average = getDeviation(durationCount) 
 
-        numOps = 0 
-        startTime = round(time.perf_counter(),6) #getting the start time using performance counter for ms 
-        
-        while round(time.perf_counter(),6)-startTime <1:   #running a loop for 1 second and getting the number of operatiosn completed.
-            eval(operation)
-            numOps+=1
-        
-        runOps.append(numOps) #adding the number of operations to list 
-    
-               #getting average number of operations after completing 3 iterations 
-    
-    deviation,average = getDeviation(runOps)             #getting the standard deviation from the data set 
-    
     return threadCount,average, deviation #returning thread count, operation type, average and deviation 
 
-def getTimeCount(operation,threadCount):
-    operationCount =100_000
-    durationCount = []
-    for _ in range(3):
-       startTime = round(time.perf_counter(),6)
-       for _ in range(operationCount):
-           eval(operation)
-       endTime =  round(time.perf_counter(),6)
-       duration = endTime-startTime
-       opsPerSec = operationCount/duration
-       durationCount.append(opsPerSec)
-
-             #getting average number of operations after completing 3 iterations 
-    deviation,average = getDeviation(durationCount)  
-
-    return threadCount,average, deviation
 
 def threadCountUsed(benchType):
 
     results= []
     numThreads = [1,2,4,8]
     
-    if benchType == "setNumTime":
-        results.extend([("float",) + getOperationCount("2.0+1.0","default")])  #getting base for whatever the computer will do on its own.
-        results.extend([("int",) + getOperationCount("2+1","default")])
+   
+    results.extend([("float",) + getCounts(benchType,"2.0+1.0","default")])  #getting base for whatever the computer will do on its own.
+    results.extend([("int",) + getCounts(benchType,"2+1","default")])
     
-        with concurrent.futures.ThreadPoolExecutor() as executor: #getting results based on the number of threads used, using thread pool executor . 
-            futuresF = [executor.submit(getOperationCount,"2.0+1.0",threadCount) for threadCount in numThreads]
-            results.extend((("float",) + future.result()) for future in futuresF)
-            futuresI = [executor.submit(getOperationCount,"2+1",threadCount) for threadCount in numThreads]
-            results.extend((("int",) + future.result()) for future in futuresI)
-        print( "Completed tasks for set time, results returned to user")
-
-    if benchType == "setNumOps":
-        results.extend([("float",) + getTimeCount("2.0+1.0","default")])  #getting base for whatever the computer will do on its own.
-        results.extend([("int",) + getTimeCount("2+1","default")])
-    
-        with concurrent.futures.ThreadPoolExecutor() as executor: #getting results based on the number of threads used, using thread pool executor . 
-            futuresF = [executor.submit(getTimeCount,"2.0+1.0",threadCount) for threadCount in numThreads]
-            results.extend((("float",) + future.result()) for future in futuresF)
-            futuresI = [executor.submit(getTimeCount,"2+1",threadCount) for threadCount in numThreads]
-            results.extend((("int",) + future.result()) for future in futuresI)
-        print( "Completed tasks for set number of operations, results returned to user")
-
-    
+    with concurrent.futures.ThreadPoolExecutor() as executor: #getting results based on the number of threads used, using thread pool executor . 
+        futuresF = [executor.submit(getCounts,benchType,"2.0+1.0",threadCount) for threadCount in numThreads]
+        results.extend((("float",) + future.result()) for future in futuresF)
+        futuresI = [executor.submit(getCounts,benchType,"2+1",threadCount) for threadCount in numThreads]
+        results.extend((("int",) + future.result()) for future in futuresI)
+    print( "Completed tasks for set time, results returned to user")
     return results
 
 
