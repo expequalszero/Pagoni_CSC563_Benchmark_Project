@@ -5,7 +5,7 @@
 
 from asyncio import futures
 import time
-import statistics
+import threading
 import tkinter as tk
 from tkinter import ttk
 import concurrent.futures
@@ -24,20 +24,19 @@ def getDeviation(data):          #ran into issue with statistics given off the w
     
     avgSqu = sum(squDif)/len(squDif) #getting the average of the squared differences
     
-    deviation = math.sqrt(avgSqu) #calculating the deviation based on above code.
+    deviation = round(math.sqrt(avgSqu),6) #calculating the deviation based on above code.
    
-    return deviation  #returning result 
+    return deviation,average  #returning result 
 
 
 
 
-def getOperationCount(typeOp,operation,threadCount): #function for getting the num of operations completed per second
+def getOperationCount(operation,threadCount): #function for getting the num of operations completed per second, some arguments are needed for return to track 
     
     runOps = [] 
-    
     for _ in range(3):
+
         numOps = 0 
-        
         startTime = round(time.perf_counter(),6) #getting the start time using performance counter for ms 
         
         while round(time.perf_counter(),6)-startTime <1:   #running a loop for 1 second and getting the number of operatiosn completed.
@@ -46,35 +45,65 @@ def getOperationCount(typeOp,operation,threadCount): #function for getting the n
         
         runOps.append(numOps) #adding the number of operations to list 
     
-    average = sum(runOps)/len(runOps)           #getting average number of operations after completing 3 iterations 
+               #getting average number of operations after completing 3 iterations 
     
-    deviation = getDeviation(runOps)             #getting the standard deviation from the data set 
+    deviation,average = getDeviation(runOps)             #getting the standard deviation from the data set 
     
-    
+    return threadCount,average, deviation #returning thread count, operation type, average and deviation 
 
-    return threadCount,typeOp,average, deviation
+def getTimeCount(operation,threadCount):
+    operationCount =100_000
+    durationCount = []
+    for _ in range(3):
+       startTime = round(time.perf_counter(),6)
+       for _ in range(operationCount):
+           eval(operation)
+       endTime =  round(time.perf_counter(),6)
+       duration = endTime-startTime
+       opsPerSec = operationCount/duration
+       durationCount.append(opsPerSec)
 
-def threadCountUsed():
+             #getting average number of operations after completing 3 iterations 
+    deviation,average = getDeviation(durationCount)  
+
+    return threadCount,average, deviation
+
+def threadCountUsed(benchType):
 
     results= []
     numThreads = [1,2,4,8]
     
-    #getting base for whatever the computer will do on its own.
-    results.append(getOperationCount("float","2.0+1.0","default"))
-    results.append(getOperationCount("int","2+1","default"))
-    #getting results based on the number of threads used. 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futuresF = [executor.submit(getOperationCount,"float","2.0+1.0",threadCount) for threadCount in numThreads]
-        results.extend(future.result() for future in futuresF)
-        futuresI = [executor.submit(getOperationCount,"int","2+1",threadCount) for threadCount in numThreads]
-        results.extend( future.result() for future in futuresI)
-    print( "Completed tasks results returned to user")
+    if benchType == "setNumTime":
+        results.extend([("float",) + getOperationCount("2.0+1.0","default")])  #getting base for whatever the computer will do on its own.
+        results.extend([("int",) + getOperationCount("2+1","default")])
+    
+        with concurrent.futures.ThreadPoolExecutor() as executor: #getting results based on the number of threads used, using thread pool executor . 
+            futuresF = [executor.submit(getOperationCount,"2.0+1.0",threadCount) for threadCount in numThreads]
+            results.extend((("float",) + future.result()) for future in futuresF)
+            futuresI = [executor.submit(getOperationCount,"2+1",threadCount) for threadCount in numThreads]
+            results.extend((("int",) + future.result()) for future in futuresI)
+        print( "Completed tasks for set time, results returned to user")
+
+    if benchType == "setNumOps":
+        results.extend([("float",) + getTimeCount("2.0+1.0","default")])  #getting base for whatever the computer will do on its own.
+        results.extend([("int",) + getTimeCount("2+1","default")])
+    
+        with concurrent.futures.ThreadPoolExecutor() as executor: #getting results based on the number of threads used, using thread pool executor . 
+            futuresF = [executor.submit(getTimeCount,"2.0+1.0",threadCount) for threadCount in numThreads]
+            results.extend((("float",) + future.result()) for future in futuresF)
+            futuresI = [executor.submit(getTimeCount,"2+1",threadCount) for threadCount in numThreads]
+            results.extend((("int",) + future.result()) for future in futuresI)
+        print( "Completed tasks for set number of operations, results returned to user")
+
     
     return results
 
 
 
-def createGUI(data):
+
+
+
+def createGUI(cpuSpeeds,type):
     #creating the gui 
     guiDisplay = tk.Tk()
     #set background color
@@ -82,10 +111,10 @@ def createGUI(data):
     guiDisplay.grid_rowconfigure(0,weight=1)
     guiDisplay.grid_columnconfigure(0,weight=1)
 
-    guiDisplay.title("Benchmark Program: CPU Speeds")
+    guiDisplay.title(f"Benchmark Program: CPU Speeds {type}")
     #creating a nested list to hold frames for gui
-    frames = [[None for _ in range(4)] for _ in range(10)]
-    dataInfo = [[None for _ in range(4)] for _ in range(10)]
+    frames = [[None for _ in range(4)] for _ in range(len(cpuSpeeds))]
+    dataInfo = [[None for _ in range(4)] for _ in range(len(cpuSpeeds))]
     
     headerStyle = ttk.Style() #setting the style up for the gui options
     headerStyle.configure("headerStyle.TLabel", font=("Times New Roman",14,"bold"), background = "lightgrey")
@@ -93,7 +122,7 @@ def createGUI(data):
     bodyStyle.configure("body.TLabel", font =("Times New Roman", 12))
 
 
-    guiHeaders = ["Number of Threads: ", "Operation Type: ", "Average of Operations per second: ", "Standard Deviation: "]
+    guiHeaders = [ "Operation Type: ","Number of Threads: ", "Average of Operations per second: ", "Standard Deviation: "]
 
 
 
@@ -107,18 +136,22 @@ def createGUI(data):
         
 
     for row, result in enumerate (cpuSpeeds):
+        print("row " ,row, "result: ", result)
+        
+        
         for col, data in enumerate(result):
-               
+            print("col: ", col, "data: ", data)
+              
             dataFrame = tk.Frame(guiDisplay,relief="solid",borderwidth = 1)
             dataFrame.grid(row= row+1, column = col, padx =10, pady=10)
             frames[row][col] = dataFrame
-            threadCount = cpuSpeeds[row][0]
+            threadCount = cpuSpeeds[row][1]
             labelText = ""
                 
-            if col == 1 and data == "float":
-                labelText = "Float Operations Per Second: "
-            elif col == 1 and data == "int":
-                labelText = "Integer Operations Per Second: "
+            if col == 0 and data == "float":
+                labelText = "Float Operations Per Second (FLOPS): "
+            elif col == 0 and data == "int":
+                labelText = "Integer Operations Per Second (IOPS): "
             else:
                 labelText = str(data)
          
@@ -128,5 +161,15 @@ def createGUI(data):
 
 if __name__ == "__main__":
      #creating varibles to get the results 
-    cpuSpeeds = threadCountUsed()
-    createGUI(cpuSpeeds)
+    cpuSpeedsTime = threadCountUsed("setNumTime")
+    cpuSpeedsOps = threadCountUsed("setNumOps")
+    titleTime = "Using a Set Amount of Time."
+    titleOps = "Using a Set Amount of Operations."
+    threadForTime = threading.Thread(target=createGUI, args=(cpuSpeedsTime,titleTime, ))
+    threadForOps = threading.Thread(target=createGUI, args=(cpuSpeedsOps,titleOps, ))
+
+    threadForTime.start()
+    threadForOps.start()
+
+    threadForTime.join()
+    threadForOps.join()
