@@ -16,7 +16,7 @@ from turtle import bgcolor
 
 operationsCount = 100_000       # for testing purposes 
 
-def getDeviation(data):          #ran into issue with statistics given off the wall returns for standard deviation. using custom function for time being
+def getDeviation(data):          #ran into issue with statistics given off the wall returns for standard deviation. using a custom deviation function for time being
     
     average  = sum(data)/len(data) #getting the avergae from the data set 
     
@@ -31,71 +31,54 @@ def getDeviation(data):          #ran into issue with statistics given off the w
 
 
 
-def getOperationCount(operation,threadCount): #function for getting the num of operations completed per second, some arguments are needed for return to track 
-    
-    runOps = [] 
+def getCounts(testType, operation,threadCount): #function for getting the num of operations completed per second, some arguments are needed for return to track 
+    setOpsCount =100_000
+    opsCount = [] 
+    durationCount = []
+    deviation,average = 0,0
     for _ in range(3):
+        if(testType == "setNumTime"):
+            numOps = 0 
+            startTime = time.perf_counter() #getting the start time using performance counter for ms 
+        
+            while time.perf_counter()-startTime <1:   #running a loop for 1 second and getting the number of operatiosn completed.
+                eval(operation)
+                numOps+=1
+        
+            opsCount.append(numOps) #adding the number of operations to list 
+        
+        else:
+            startTime = time.perf_counter()
+            for _ in range(setOpsCount):
+                eval(operation)
+            endTime =  time.perf_counter()
+            duration = endTime-startTime
+            opsPerSec = setOpsCount/duration#playing around with the time 
+            durationCount.append(opsPerSec)
+            
+    if(testType == "setNumTime"):
+       deviation,average = getDeviation(opsCount) 
+    else:   
+       deviation,average = getDeviation(durationCount) 
 
-        numOps = 0 
-        startTime = round(time.perf_counter(),6) #getting the start time using performance counter for ms 
-        
-        while round(time.perf_counter(),6)-startTime <1:   #running a loop for 1 second and getting the number of operatiosn completed.
-            eval(operation)
-            numOps+=1
-        
-        runOps.append(numOps) #adding the number of operations to list 
-    
-               #getting average number of operations after completing 3 iterations 
-    
-    deviation,average = getDeviation(runOps)             #getting the standard deviation from the data set 
-    
     return threadCount,average, deviation #returning thread count, operation type, average and deviation 
 
-def getTimeCount(operation,threadCount):
-    operationCount =100_000
-    durationCount = []
-    for _ in range(3):
-       startTime = round(time.perf_counter(),6)
-       for _ in range(operationCount):
-           eval(operation)
-       endTime =  round(time.perf_counter(),6)
-       duration = endTime-startTime
-       opsPerSec = operationCount/duration
-       durationCount.append(opsPerSec)
-
-             #getting average number of operations after completing 3 iterations 
-    deviation,average = getDeviation(durationCount)  
-
-    return threadCount,average, deviation
 
 def threadCountUsed(benchType):
 
     results= []
     numThreads = [1,2,4,8]
     
-    if benchType == "setNumTime":
-        results.extend([("float",) + getOperationCount("2.0+1.0","default")])  #getting base for whatever the computer will do on its own.
-        results.extend([("int",) + getOperationCount("2+1","default")])
+   
+    results.extend([("float",) + getCounts(benchType,"2.0+1.0","default")])  #getting base for whatever the computer will do on its own.
+    results.extend([("int",) + getCounts(benchType,"2+1","default")])
     
-        with concurrent.futures.ThreadPoolExecutor() as executor: #getting results based on the number of threads used, using thread pool executor . 
-            futuresF = [executor.submit(getOperationCount,"2.0+1.0",threadCount) for threadCount in numThreads]
-            results.extend((("float",) + future.result()) for future in futuresF)
-            futuresI = [executor.submit(getOperationCount,"2+1",threadCount) for threadCount in numThreads]
-            results.extend((("int",) + future.result()) for future in futuresI)
-        print( "Completed tasks for set time, results returned to user")
-
-    if benchType == "setNumOps":
-        results.extend([("float",) + getTimeCount("2.0+1.0","default")])  #getting base for whatever the computer will do on its own.
-        results.extend([("int",) + getTimeCount("2+1","default")])
-    
-        with concurrent.futures.ThreadPoolExecutor() as executor: #getting results based on the number of threads used, using thread pool executor . 
-            futuresF = [executor.submit(getTimeCount,"2.0+1.0",threadCount) for threadCount in numThreads]
-            results.extend((("float",) + future.result()) for future in futuresF)
-            futuresI = [executor.submit(getTimeCount,"2+1",threadCount) for threadCount in numThreads]
-            results.extend((("int",) + future.result()) for future in futuresI)
-        print( "Completed tasks for set number of operations, results returned to user")
-
-    
+    with concurrent.futures.ThreadPoolExecutor() as executor: #getting results based on the number of threads used, using thread pool executor . 
+        futuresF = [executor.submit(getCounts,benchType,"2.0+1.0",threadCount) for threadCount in numThreads]
+        results.extend((("float",) + future.result()) for future in futuresF)
+        futuresI = [executor.submit(getCounts,benchType,"2+1",threadCount) for threadCount in numThreads]
+        results.extend((("int",) + future.result()) for future in futuresI)
+    print( "Completed tasks for set time, results returned to user")
     return results
 
 
@@ -114,7 +97,7 @@ def createGUI(cpuSpeeds,type):
     guiDisplay.title(f"Benchmark Program: CPU Speeds {type}")
     #creating a nested list to hold frames for gui
     frames = [[None for _ in range(4)] for _ in range(len(cpuSpeeds))]
-    dataInfo = [[None for _ in range(4)] for _ in range(len(cpuSpeeds))]
+    
     
     headerStyle = ttk.Style() #setting the style up for the gui options
     headerStyle.configure("headerStyle.TLabel", font=("Times New Roman",14,"bold"), background = "lightgrey")
@@ -145,7 +128,7 @@ def createGUI(cpuSpeeds,type):
             dataFrame = tk.Frame(guiDisplay,relief="solid",borderwidth = 1)
             dataFrame.grid(row= row+1, column = col, padx =10, pady=10)
             frames[row][col] = dataFrame
-            threadCount = cpuSpeeds[row][1]
+           
             labelText = ""
                 
             if col == 0 and data == "float":
