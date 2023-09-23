@@ -12,11 +12,10 @@ from tkinter import ttk
 import concurrent.futures
 import math
 
+gui = tk.Tk()
+gui.config(bg="skyblue",pady=20)   
 
-
-
-
-
+    
 def getDeviation(data):          #ran into issue with statistics given off the wall returns for standard deviation. using a custom deviation function for time being
     
     average  = sum(data)/len(data) #getting the avergae from the data set 
@@ -29,42 +28,48 @@ def getDeviation(data):          #ran into issue with statistics given off the w
    
     return deviation,average  #returning result 
 
-
-
-
 def getCounts(testType, operation,threadCount):         #function for getting require results, broken into two options. 
-    setOpsCount =100_000_000                            #varible to test for the number of operations, current value is so testing can be done quickly
+     
+    setOpsCount =100_000                         #varible to test for the number of operations, current value is so testing can be done quickly
     opsCount = []                                       #varible to hold number of operations complated in a 1 second
     durationCount = []                                  #varible to hold how long it takes each iteration of the operation test
-    for _ in range(3):                                  #running the test three times
-        if(testType == "setNumTime"):                   #checking testType varible, either setNumTime or setNumOps - 
-            numOps = 0                                  #initial value of number of operations completed
-            startTime = time.perf_counter()             #getting the start time using performance counter for ms 
+    
+    
+    for _ in range(3):                               #running the test three times
+            if(testType == "setNumTime"):                   #checking testType varible, either setNumTime or setNumOps - 
+                numOps = 0                                  #initial value of number of operations completed
+                startTime = time.perf_counter()             #getting the start time using performance counter for ms 
         
-            while time.perf_counter()-startTime <1:     #running a loop for 1 second and getting the number of operatiosn completed.
-                eval(operation)                         #the provided operation needs to be evaluated 
-                numOps+=1                               #tracking number of operations complated
+                while time.perf_counter()-startTime <1:     #running a loop for 1 second and getting the number of operatiosn completed.
+                    eval(operation)                         #the provided operation needs to be evaluated 
+                    numOps+=1                               #tracking number of operations complated
         
-            opsCount.append(numOps)                     #adding the number of operations to list to use for later calculations 
-        else:                                           #if the testType is other thant setNumTime 
-            startTime = time.perf_counter()             #recording start time 
-            for _ in range(setOpsCount):                #running loop based on the set number of operations
-                eval(operation)                         #evaluating the operation
-            endTime =  time.perf_counter()              #recording the time after all operations are completed
-            duration = endTime-startTime                #getting the total duration of time 
-            opsPerSec = setOpsCount/duration            #divide the total number of operations by the total time to get the time it takes to complete operations per second  
-            durationCount.append(opsPerSec)             #add the results to the list 
+                opsCount.append(numOps)                     #adding the number of operations to list to use for later calculations 
+                
+            else:                                           #if the testType is other thant setNumTime 
+                startTime = time.perf_counter()             #recording start time 
+                for _ in range(setOpsCount):                #running loop based on the set number of operations
+                    eval(operation)                         #evaluating the operation
+                endTime =  time.perf_counter()              #recording the time after all operations are completed
+                duration = endTime-startTime                #getting the total duration of time 
+                opsPerSec = setOpsCount/duration            #divide the total number of operations by the total time to get the time it takes to complete operations per second  
+                durationCount.append(opsPerSec)             #add the results to the list 
             
     if(testType == "setNumTime"):                       #based on the test type: send the appropriate list to the function to return the deviation and average 
-       deviation,average = getDeviation(opsCount) 
+        deviation,average = getDeviation(opsCount) 
     else:   
-       deviation,average = getDeviation(durationCount) 
+        deviation,average = getDeviation(durationCount) 
 
+   
     return threadCount,average, deviation               #returning thread count, average and deviation 
 
 
-def threadCountUsed(benchType,gui):                         #function to use a particular number of threads
-    gui.destroy()                                       #closed the welcome page once option is selected 
+def threadCountUsed(benchType):                         #function to use a particular number of threads
+    
+    resetGUI()                                       #result the GUI 
+    loadingScreen()                                     #load loading screen
+    gui.update()
+    
     results= []                                         #list to hold results 
     numThreads = [1,2,4,8]                              #list to hold thread count
     
@@ -78,21 +83,23 @@ def threadCountUsed(benchType,gui):                         #function to use a p
         futuresI = [executor.submit(getCounts,benchType,"2+1",threadCount) for threadCount in numThreads]
         results.extend((("int",) + future.result()) for future in futuresI)
     print( "Completed tasks for set time, results returned to user")                                                 #advise the user on terminal that the operations were completed
-   
+    
     createGUI(benchType,results)                                                                                                 #return the results to user
 
     
 def createGUI(type, cpuSpeeds):                                                                                      #function to create a GUI 
                                                                                                                     #creating the gui 
-    guiDisplay = tk.Tk()                                                                                            #set the guis configuration up
-    guiDisplay.config(bg="skyblue")                                                                         
-    guiDisplay.grid_rowconfigure(0,weight=1)
-    guiDisplay.grid_columnconfigure(0,weight=1)
+    resetGUI()  
+    
+    resizeGUI(10,4)
+    gui.update()
+    #gui.grid_rowconfigure(0,weight=1)
+    #gui.grid_columnconfigure(0,weight=1)
     if type =="setNumTime":
         typeHeader = "Using a Set Duration of Time"
     else:
         typeHeader = "Using a Set Amount of Operations"
-    guiDisplay.title(f"Benchmark Program: CPU Speeds {typeHeader}")                                                       #creating a nested list to hold frames for gui
+    gui.title(f"Benchmark Program: CPU Speeds {typeHeader}")                                                       #creating a nested list to hold frames for gui
     frames = [[None for _ in range(4)] for _ in range(len(cpuSpeeds))]
     headerStyle = ttk.Style()                                                                                       #setting the style up for the gui header and body
     headerStyleName = "headerStyle.TLabel"
@@ -103,14 +110,14 @@ def createGUI(type, cpuSpeeds):                                                 
    
     guiHeaders = [ "Operation Type: ","Number of Threads: ", "Average of Operations per second: ", "Standard Deviation: "] #list of header titles
     for head, headers in enumerate(guiHeaders):                                                         #filling in the header on gui 
-        headerFrame = tk.Frame(guiDisplay, relief="solid", borderwidth=1, bg="lightgrey")
+        headerFrame = tk.Frame(gui, relief="solid", borderwidth=1, bg="lightgrey")
         headerFrame.grid(row=0,column=head,padx =10, pady=10,sticky ="w")
         label = ttk.Label(headerFrame, text = headers, anchor ='w', style= headerStyleName)
         label.grid(row=0,column= head, padx = 10, pady =10, sticky ='w')
         
     for row, result in enumerate (cpuSpeeds):                                                       #running through the results and filling in the GUI - using enumerate to run through the results list 
         for col, data in enumerate(result):
-            dataFrame = tk.Frame(guiDisplay,relief="solid",borderwidth = 1)                         #using frames and configuration frames design 
+            dataFrame = tk.Frame(gui,relief="solid",borderwidth = 1)                         #using frames and configuration frames design 
             dataFrame.grid(row= row+1, column = col, padx =10, pady=10)
             frames[row][col] = dataFrame                                                            #adding frames to the list based on location 
              
@@ -124,24 +131,17 @@ def createGUI(type, cpuSpeeds):                                                 
             label = ttk.Label(dataFrame,text = labelText, anchor = "w", style = bodyStyleName)      #filling in the labels 
             label.grid(row=row,column = col,sticky ="w")
 
-    ttk.Button(guiDisplay,text= "Do Another Test", command = lambda: welcomeGUI( guiDisplay)).grid(row=len(cpuSpeeds)+1,column = 4, padx =10,pady=10,sticky ="se" )
+    ttk.Button(gui,text= "Do Another Test", command = lambda: (resetGUI(), welcomeGUI())).grid(row=len(cpuSpeeds)+1,column = 4, padx =10,pady=10,sticky ="se" )
 
-    guiDisplay.mainloop()                                                                           #displaying the GUI
+                                                                              #displaying the GUI
 
-def welcomeGUI(GUI):                                                                                 #display welcome GUI - ran into overcomplex coding with other route i was goign to take
-
-    if GUI:
-        GUI.destroy()                                                                                  #test to ensure only one instance is running
-
-    gui = tk.Tk()                                   
-    gui.config(bg="skyblue",pady=20)    
-    
+def welcomeGUI():                                                                                 #display welcome GUI - ran into overcomplex coding with other route i was goign to take
     
     gui.title(f"Benchmark Program: Welcome Page ")  
-    gui.geometry("800x500+10+10")
+    
 
     frames = []
-    textList = ["Please select the type of test you would like to run to test you CPU: ","Use a set amount of time:","Use a set number of operations:","Close Benchmark Application"]
+    textList = ["Please select the type of test you would like to run to test you CPU: ","Use a set number of operations:","Use a set amount of time:","Close Benchmark Application"]
     welcomeFont = ("Times New Roman",14,"bold")
     
     for i in range(4):
@@ -166,19 +166,42 @@ def welcomeGUI(GUI):                                                            
                     background = [("pressed","green"),
                                   ("active","green")])
                     
-   
+    resizeGUI(4,0)
 
     ttk.Label(frames[0],text= textList[0],style = "Welcome.TLabel",font = welcomeFont).grid(row=0, column = 0, sticky="ew")
-    ttk.Button(frames[1],text = textList[1], style = "ButtonStyle.TButton", command = lambda:threadCountUsed("setNumOps",gui)).grid(row=1,column = 0,  sticky = "ew")
-    ttk.Button(frames[2],text = textList[2], style ="ButtonStyle.TButton", command = lambda:threadCountUsed("setNumTime:",gui)).grid(row=2,column = 0,  sticky = "ew")
+    ttk.Button(frames[1],text = textList[1], style = "ButtonStyle.TButton", command = lambda:threadCountUsed("setNumOps")).grid(row=1,column = 0,  sticky = "ew")
+    ttk.Button(frames[2],text = textList[2], style ="ButtonStyle.TButton", command = lambda:threadCountUsed("setNumTime")).grid(row=2,column = 0,  sticky = "ew")
     ttk.Button(frames[3],text = textList[3], style ="ButtonStyle.TButton", command = lambda:gui.destroy()).grid(row=3,column = 0, sticky = "ew")
     
   
+def loadingScreen():                                                                                    ##added a loading screen 
+    
+   
+    gui.title("Conducting Test Please Wait")
+    loadingText = "The system is currently conducting the test you have requested please wait until the test is completed."
+    loadingLabel = ttk.Label(gui, text= loadingText, background="lightgrey")
+    loadingLabel.grid(row=0,column=0,sticky="nsew")
+    
+    
+     
+def resizeGUI(row,col):
+    for i in range(row):
+        gui.grid_rowconfigure(row,weight=1)
         
-    gui.mainloop()
+    for j in range(col):
+        gui.grid_columnconfigure(col,weight=1)
 
+def resetGUI():
+    for items in gui.winfo_children():
+        
+        items.destroy()
+    
 if __name__== "__main__":
     
-    welcomeGUI(False)
+    welcomeGUI()
+    gui.mainloop() 
 
-    
+    ##spent most of day messing with different ways to improve the code, trying to add major improvements, did alright, but ran out of time. 
+
+
+   
