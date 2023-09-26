@@ -50,7 +50,7 @@ def getDeviation(data):                                                 #ran int
 
 def getCounts( benchType,threadCount, operation):                         #function for getting require results, broken into two options. 
      
-    setOpsCount = 100                                              #varible to test for the number of operations, current value is so testing can be done quickly
+    setOpsCount = 100_000_000                                             #varible to test for the number of operations, current value is so testing can be done quickly
     opsCount = []                                                       #varible to hold number of operations complated in a 1 second
     durationCount = []                                                  #varible to hold how long it takes each iteration of the operation test
     
