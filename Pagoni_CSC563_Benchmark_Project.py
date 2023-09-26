@@ -5,7 +5,7 @@
 
 
 
-import enum
+
 import time
 import tkinter as tk
 from tkinter import ttk
@@ -91,14 +91,12 @@ def threadCountUsed(benchType):                                         #functio
     resetGUI()                                                          #result the GUI 
     loadingScreen()                                                     #load loading screen
     gui.update()
-                                                       #list to hold results 
-    threadsUsed  = [1,2,4,8]                                              #list to hold thread count
-    
-    
+                                                       
+                                             #list to hold thread count
+ 
     defaultFloat= getCounts(benchType,"default","2.0+1.0")       #getting base for whatever the computer will do on its own.
     defaultInt= getCounts(benchType,"default","2+1") 
-    
-    resultsData = useThreads(benchType,threadsUsed)
+    resultsData = useThreads(benchType)
 
     frameData = combinLists(defaultFloat, defaultInt, resultsData)
     
@@ -109,13 +107,14 @@ def threadCountUsed(benchType):                                         #functio
 
 def combinLists(defaultFloat, defaultInt, resultsData):
 
-    frameData = [ ["Operation Type: ","Number of Threads: ",
+    frameData = [ ["Operation Type: ","Number of Threads: ",            #framedata will be what goes into the frame
                     "Average of Operations per second: ",
-                   "Standard Deviation: "]]                                               #making the framedata useable in this function and adding in the default tests 
+                   "Standard Deviation: "]]  
+
     frameData.append(defaultFloat)
     frameData.append(defaultInt)
 
-    headers = frameData[0]                                                #seperating out the data 
+    headers = frameData[0]                                                #seperating out the data, so they can be added into the results list in order
     defaultF = frameData[1]
     defaultI = frameData[2]
     
@@ -135,10 +134,10 @@ def combinLists(defaultFloat, defaultInt, resultsData):
 
     return results                                                          #returning the results 
 
-def useThreads(benchType,threadCount):
+def useThreads(benchType):                              #function to use threads 
 
     results= []
-
+    threadCount  = [1,2,4,8]    
     with concurrent.futures.ThreadPoolExecutor() as executor: 
         futuresF = [executor.submit(getCounts,benchType,threadNum,"2.0+1.0") for threadNum in threadCount]
         futuresI = [executor.submit(getCounts,benchType,threadNum,"2+1") for threadNum in threadCount]
@@ -162,16 +161,13 @@ def resultsGUI(benchType,data):                                         #functio
     
     setFrames(data)                                                                       #adding a button to run a new test by returning to welcome page 
     ttk.Button(gui,text= "Do Another Test", command = lambda: (resetGUI(), welcomeGUI())).grid(row=len(data),column = 4, padx =10,pady=10,sticky ="se" )
+    ttk.Button(gui,text = "Close Application",command = lambda:gui.destroy()).grid(row=len(data)+1,column = 4, sticky = "ew")
 
-def setFrames(data):
-    
-    dataGrid = [col for col in data]
-    
+def setFrames(data):                                        #creating the frames/labels and displaying them
     
     for rowIndex, rowData in enumerate(data):
-       
         for colIndex,colData in enumerate(rowData):
-           
+
            frame = tk.Frame(gui, relief="solid", borderwidth=1, bg="lightgrey")
            frame.grid(row=rowIndex,column=colIndex,padx =10, pady=10,sticky ="w")
 
@@ -192,15 +188,13 @@ def welcomeGUI():                                                       #display
         "Please select the type of test you would like to run to test you CPU: ",
         "Use a set number of operations:","Use a set amount of time:",
         "Close Benchmark Application"]
-
+    
     welcomeFont = ("Times New Roman",14,"bold")                         #varible to aadjust font for title 
                                                                         #making the frames for the GUI
     for i in range(4):
         frame = tk.Frame(gui,relief="solid",borderwidth=2,bg="lightgrey")
-
         frame.grid(row=i,column=0,padx = 0, pady = 20)
         frame.grid_rowconfigure(i,weight=1)
-
         frames.append( frame)
 
     labelStyle = ttk.Style()
