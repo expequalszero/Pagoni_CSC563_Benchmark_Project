@@ -35,7 +35,7 @@ bodyStyle = ttk.Style()
 bodyStyleName = "body.TLabel"
 bodyStyle.configure(bodyStyleName, font =("Times New Roman", 12))
 
-    
+#functions dealing with calculations    
 def getDeviation(data):                                                 #ran into issue with statistics given off the wall returns for standard deviation. using a custom deviation function for time being
     
     average  = sum(data)/len(data)                                      #getting the avergae from the data set 
@@ -50,7 +50,7 @@ def getDeviation(data):                                                 #ran int
 
 def getCounts( benchType,threadCount, operation):                         #function for getting require results, broken into two options. 
      
-    setOpsCount = 100                                              #varible to test for the number of operations, current value is so testing can be done quickly
+    setOpsCount = 100_000_000                                              #varible to test for the number of operations, current value is so testing can be done quickly
     opsCount = []                                                       #varible to hold number of operations complated in a 1 second
     durationCount = []                                                  #varible to hold how long it takes each iteration of the operation test
     
@@ -79,51 +79,62 @@ def getCounts( benchType,threadCount, operation):                         #funct
         deviation,average = getDeviation(opsCount) 
     else:   
         deviation,average = getDeviation(durationCount) 
+
     if operation == "2.0+1.0":
-        return ["FLOPS", threadCount,average, deviation  ]
+        return ["FLOPS", threadCount,average, deviation  ]              #based on what operation return with updated data
     else:
         return ["IOPS", threadCount,average, deviation  ]
-                          #returning thread count, average and deviation 
 
+#functions dealing with threads                          
+def useThreads(benchType):                               
+
+    results= []
+    threadCount  = [1,2,4,8]    
+    with concurrent.futures.ThreadPoolExecutor() as executor:           #using the concurrent module 
+        futuresF = [executor.submit(getCounts,benchType,threadNum,"2.0+1.0") for threadNum in threadCount]
+        futuresI = [executor.submit(getCounts,benchType,threadNum,"2+1") for threadNum in threadCount]
+        for future in concurrent.futures.as_completed(futuresF):
+            results.extend([future.result()])
+        for future in concurrent.futures.as_completed(futuresI):
+            results.extend([future.result()])
+    return results
 
 def threadCountUsed(benchType):                                         #function to use a particular number of threads
     
     resetGUI()                                                          #result the GUI 
     loadingScreen()                                                     #load loading screen
-    gui.update()
-                                                       
-                                             #list to hold thread count
- 
-    defaultFloat= getCounts(benchType,"default","2.0+1.0")       #getting base for whatever the computer will do on its own.
-    defaultInt= getCounts(benchType,"default","2+1") 
-    resultsData = useThreads(benchType)
+    gui.update()                                                        #force gui to update 
+        
+    defaultFloat= getCounts(benchType,"default","2.0+1.0")              #getting base for whatever the computer will do on its own.
+    defaultInt= getCounts(benchType,"default","2+1")    
+    resultsData = useThreads(benchType)                                 #getting the results from the different threads  
 
-    frameData = combinLists(defaultFloat, defaultInt, resultsData)
+    frameData = combinLists(defaultFloat, defaultInt, resultsData)      #combining all the datat into one 
     
     print( "Completed tasks for set time, results returned to user")    #advise the user on terminal that the operations were completed
     
-    resultsGUI(benchType,frameData) 
+    resultsGUI(benchType,frameData)                                     #send the data to the gui 
     
-
+#functions dealing with the data 
 def combinLists(defaultFloat, defaultInt, resultsData):
 
-    frameData = [ ["Operation Type: ","Number of Threads: ",            #framedata will be what goes into the frame
+    frameData = [ ["Operation Type: ","Number of Threads: ",            #framedata starts with the headers and the data will be added into it 
                     "Average of Operations per second: ",
                    "Standard Deviation: "]]  
 
-    frameData.append(defaultFloat)
+    frameData.append(defaultFloat)                                      #adding in the default data to the list 
     frameData.append(defaultInt)
 
-    headers = frameData[0]                                                #seperating out the data, so they can be added into the results list in order
+    headers = frameData[0]                                              #seperating out the data, so they can be added into the results list in order
     defaultF = frameData[1]
     defaultI = frameData[2]
     
     for row in resultsData:                                             #adding the results from the calculations 
         frameData.append(row)
         
-    data=frameData[3:]                                                    #getting the results seperate for sorting 
+    data=frameData[3:]                                                  #getting the results seperate for sorting 
 
-    floatOperations = [row for row in data if row[0]=="FLOPS"]          #getting all the operations into their own list          
+    floatOperations = [row for row in data if row[0]=="FLOPS"]          #getting all the operations into their own list           
     intOperations = [row for row in data if row[0]=="IOPS"]
     
     sortedFloatOps = sorted(floatOperations, key=lambda data: (data[0],data[1]))    #sort the results based on the first and second columns 
@@ -134,19 +145,8 @@ def combinLists(defaultFloat, defaultInt, resultsData):
 
     return results                                                          #returning the results 
 
-def useThreads(benchType):                              #function to use threads 
 
-    results= []
-    threadCount  = [1,2,4,8]    
-    with concurrent.futures.ThreadPoolExecutor() as executor: 
-        futuresF = [executor.submit(getCounts,benchType,threadNum,"2.0+1.0") for threadNum in threadCount]
-        futuresI = [executor.submit(getCounts,benchType,threadNum,"2+1") for threadNum in threadCount]
-        for future in concurrent.futures.as_completed(futuresF):
-            results.extend([future.result()])
-        for future in concurrent.futures.as_completed(futuresI):
-            results.extend([future.result()])
-    return results
-
+#functions dealing with the GUI's
 def resultsGUI(benchType,data):                                         #function to create a GUI 
                                                                       
     resetGUI()                                                          #resetting the GUI 
@@ -235,14 +235,10 @@ def resetGUI():                                                         #functio
     for items in gui.winfo_children():
         
         items.destroy()
-
-
-
-
     
-if __name__== "__main__":
+if __name__== "__main__":   
     
-    welcomeGUI()
+    welcomeGUI()                                #starting the gui 
     gui.mainloop() 
 
    
