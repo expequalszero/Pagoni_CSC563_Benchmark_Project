@@ -3,15 +3,11 @@
 
 #importing the different modules that will be used to assist 
 
-
-
-
 import time
 import tkinter as tk
 from tkinter import ttk
 import concurrent.futures
 import math
-
                                                                  #some global varibles that are used and some styles that should effect all GUIS
 gui = tk.Tk()
 gui.config(bg="skyblue",pady=20)   
@@ -39,27 +35,23 @@ bodyStyle.configure(bodyStyleName, font =("Times New Roman", 12))
 def getDeviation(data):                                                 #ran into issue with statistics given off the wall returns for standard deviation. using a custom deviation function for time being
     
     average  = sum(data)/len(data)                                      #getting the avergae from the data set 
-    
-    squDif = [(count - average)**2 
-              for count in data]                                        #getting the square difference 
-    
+    squDif = [(count - average)**2 for count in data]                   #getting the square difference 
     avgSqu = sum(squDif)/len(squDif)                                    #getting the average of the squared differences
     deviation = round(math.sqrt(avgSqu),6)                              #calculating the deviation based on above code.
    
     return deviation,average                                            #returning result 
 
 def getCounts( benchType,threadCount, operation):                         #function for getting require results, broken into two options. 
-     
-    setOpsCount = 100_000_000                                              #varible to test for the number of operations, current value is so testing can be done quickly
+    
+    setOpsCount = 100_000_000                                             #varible to test for the number of operations, current value is so testing can be done quickly
     opsCount = []                                                       #varible to hold number of operations complated in a 1 second
     durationCount = []                                                  #varible to hold how long it takes each iteration of the operation test
-    
     
     for _ in range(3):                                                  #running the test three times
             if(benchType == "setNumTime"):                               #checking testType varible, either setNumTime or setNumOps - 
                 numOps = 0                                              #initial value of number of operations completed
                 startTime = time.perf_counter()                         #getting the start time using performance counter for ms 
-        
+
                 while time.perf_counter()-startTime <1:                 #running a loop for 1 second and getting the number of operatiosn completed.
                     eval(operation)                                     #the provided operation needs to be evaluated 
                     numOps+=1                                           #tracking number of operations complated
@@ -140,11 +132,9 @@ def combinLists(defaultFloat, defaultInt, resultsData):
     sortedFloatOps = sorted(floatOperations, key=lambda data: (data[0],data[1]))    #sort the results based on the first and second columns 
     sortedIntOps = sorted(intOperations, key=lambda data: (data[0],data[1]))
     
-    
     results = [headers]+[defaultF]+sortedFloatOps+[defaultI] + sortedIntOps #combining all the lists together to return
 
     return results                                                          #returning the results 
-
 
 #functions dealing with the GUI's
 def resultsGUI(benchType,data):                                         #function to create a GUI 
@@ -173,10 +163,7 @@ def setFrames(data):                                        #creating the frames
 
            label = ttk.Label(frame, text = colData, anchor ='w', style= headerStyleName)
            label.grid(row=rowIndex,column= colIndex, padx = 10, pady =10, sticky ='w')
-          
-            
-   
-
+         
 def welcomeGUI():                                                       #display welcome GUI - ran into overcomplex coding with other route i was goign to take
     
     gui.title(f"Benchmark Program: Welcome Page ")  
@@ -199,9 +186,7 @@ def welcomeGUI():                                                       #display
 
     labelStyle = ttk.Style()
     labelStyle.configure("Welcome.TLabel", background ="lightgrey")
-
-    
-                    
+           
     resizeGUI(4,0)                                                      #resize GUI to fit frames for welcome page
                                                                         #adding in label and buttons 
     ttk.Label(frames[0],text= textList[0],style = "Welcome.TLabel",font = welcomeFont)\
@@ -213,17 +198,13 @@ def welcomeGUI():                                                       #display
     ttk.Button(frames[3],text = textList[3], style ="ButtonStyle.TButton",\
        command = lambda:gui.destroy()).grid(row=3,column = 0, sticky = "ew")
     
-  
 def loadingScreen():                                                    #added a loading screen to advise user that the program is running 
                                                                         #working on adding more functionality to this 
-    
     gui.title("Conducting Test Please Wait")
     loadingText = "The system is currently conducting the test you have requested please wait until the test is completed."
     loadingLabel = ttk.Label(gui, text= loadingText, background="lightgrey")
     loadingLabel.grid(row=0,column=0,sticky="nsew")
     
-    
-     
 def resizeGUI(rows,cols):                                                 #function to resize GUI to ensure the frames all fit 
     for i in range(rows):
         gui.grid_rowconfigure(rows,weight=1)
